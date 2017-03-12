@@ -12,7 +12,7 @@ pub struct Looper {
 
 struct Realtime {
     acc: time::Duration,
-    prev: time::Instant,
+    curr: time::Instant,
     iter: RealtimeIter,
 }
 
@@ -20,15 +20,15 @@ impl Realtime {
     pub fn new(fps: f32) -> Self {
         Realtime {
             acc: time::Duration::new(0, 0),
-            prev: time::Instant::now(),
+            curr: time::Instant::now(),
             iter: RealtimeIter::new(time::Duration::new(0, (1.0 / fps * 1_000_000_000.0) as u32)),
         }
     }
 
     pub fn tick(&mut self) -> RealtimeIter {
-        let now = time::Instant::now();
-        self.acc = self.acc + (now - self.prev);
-        self.prev = now;
+        let new = time::Instant::now();
+        self.curr = new;
+        self.acc += new - self.curr;
         self.iter.set(self.acc);
         self.iter.clone()
     }
@@ -71,19 +71,20 @@ impl Looper {
         Looper { fps: fps }
     }
 
-    pub fn run<F>(&self, mut f: F)
-        where F: FnMut() -> Action
+    pub fn run<R, U>(&self, mut render: R, mut update: U)
+        where R: FnMut() -> Action,
+              U: FnMut()
     {
         let mut realtime = Realtime::new(self.fps);
 
         loop {
-            match f() {
+            match render() {
                 Action::Stop => break,
                 Action::Continue => (),
             };
 
             for _ in realtime.tick() {
-                println!("game!");
+                update()
             }
         }
     }
@@ -97,11 +98,15 @@ mod tests {
     #[test]
     fn it_works() {
         let mut state = 2;
-        Looper::new(60.0).run(move || if state != 0 {
+        let render = move || if state != 0 {
             state -= 1;
             Action::Continue
         } else {
             Action::Stop
-        });
+        };
+
+        let update = || println!("game!");
+
+        Looper::new(60.0).run(render, update);
     }
 }
