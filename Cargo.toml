@@ -1,0 +1,6 @@
+[package]
+name = "looper"
+version = "0.0.1"
+authors = ["Dave O <davidobrite@gmail.com>"]
+
+[dependencies]
