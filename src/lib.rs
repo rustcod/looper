@@ -38,6 +38,7 @@ impl Realtime {
 struct RealtimeIter {
     acc: time::Duration,
     step: time::Duration,
+    update: bool,
 }
 
 impl RealtimeIter {
@@ -45,6 +46,7 @@ impl RealtimeIter {
         RealtimeIter {
             acc: time::Duration::new(0, 0),
             step: step,
+            update: true,
         }
     }
 
@@ -61,8 +63,14 @@ impl Iterator for RealtimeIter {
             self.acc -= self.step;
             return Some(());
         }
-        thread::sleep(self.step - self.acc);
-        None
+        // XXX
+        if self.update {
+            self.update = false;
+            return Some(());
+        } else {
+            thread::sleep(self.step - self.acc);
+            None
+        }
     }
 }
 
@@ -109,10 +117,7 @@ mod tests {
             Action::Stop
         };
 
-        let update = || {
-            println!("game!");
-            Action::Continue
-        };
+        let update = || Action::Continue;
 
         Looper::new(60.0).run(render, update);
     }
