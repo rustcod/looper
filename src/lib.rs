@@ -73,7 +73,7 @@ impl Looper {
 
     pub fn run<R, U>(&self, mut render: R, mut update: U)
         where R: FnMut() -> Action,
-              U: FnMut()
+              U: FnMut() -> Action
     {
         let mut realtime = Realtime::new(self.fps);
 
@@ -84,7 +84,10 @@ impl Looper {
             };
 
             for _ in realtime.tick() {
-                update()
+                match update() {
+                    Action::Stop => break,
+                    Action::Continue => (),
+                }
             }
         }
     }
@@ -98,6 +101,7 @@ mod tests {
     #[test]
     fn it_works() {
         let mut state = 2;
+
         let render = move || if state != 0 {
             state -= 1;
             Action::Continue
@@ -105,7 +109,10 @@ mod tests {
             Action::Stop
         };
 
-        let update = || println!("game!");
+        let update = || {
+            println!("game!");
+            Action::Continue
+        };
 
         Looper::new(60.0).run(render, update);
     }
