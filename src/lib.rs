@@ -6,6 +6,45 @@ pub enum Action {
     Continue,
 }
 
+pub struct PerSecond {
+    frames: i32,
+    fps: i32,
+    start: time::Instant,
+    curr: u64,
+}
+
+impl PerSecond {
+    pub fn new() -> Self {
+        let start = time::Instant::now();
+
+        PerSecond {
+            frames: 0,
+            fps: 0,
+            start: start,
+            curr: start.elapsed().as_secs(),
+        }
+    }
+
+    pub fn tick(&mut self) {
+        let next = self.start.elapsed().as_secs();
+        if self.curr < next {
+            self.reset(next);
+        }
+
+        self.frames += 1;
+    }
+
+    pub fn get_fps(&self) -> i32 {
+        self.fps
+    }
+
+    fn reset(&mut self, next: u64) {
+        self.curr = next;
+        self.fps = self.frames;
+        self.frames = 0;
+    }
+}
+
 pub struct Looper {
     fps: f32,
 }
@@ -18,10 +57,12 @@ struct Realtime {
 
 impl Realtime {
     pub fn new(fps: f32) -> Self {
+        let step = time::Duration::new(0, (1.0 / fps * 1_000_000_000.0) as u32);
+
         Realtime {
             acc: time::Duration::new(0, 0),
             curr: time::Instant::now(),
-            iter: RealtimeIter::new(time::Duration::new(0, (1.0 / fps * 1_000_000_000.0) as u32)),
+            iter: RealtimeIter::new(step),
         }
     }
 
@@ -80,13 +121,16 @@ impl Looper {
     }
 
     pub fn run<R, U>(&self, mut render: R, mut update: U)
-        where R: FnMut() -> Action,
+        where R: FnMut(i32) -> Action,
               U: FnMut() -> Action
     {
         let mut realtime = Realtime::new(self.fps);
+        let mut fps = PerSecond::new();
 
         loop {
-            match render() {
+            fps.tick();
+
+            match render(fps.get_fps()) {
                 Action::Stop => break,
                 Action::Continue => (),
             };
@@ -109,8 +153,7 @@ mod tests {
     #[test]
     fn it_works() {
         let mut state = 2;
-
-        let render = move || if state != 0 {
+        let render = move |_fps| if state != 0 {
             state -= 1;
             Action::Continue
         } else {
