@@ -66,10 +66,14 @@ impl Realtime {
         }
     }
 
+    pub fn acc(&mut self, acc: time::Duration) {
+        self.acc = acc
+    }
+
     pub fn tick(&mut self) -> RealtimeIter {
-        let new = time::Instant::now();
-        self.curr = new;
-        self.acc += new - self.curr;
+        let now = time::Instant::now();
+        self.acc += now - self.curr;
+        self.curr = now;
         self.iter.set(self.acc);
         self.iter.clone()
     }
@@ -97,21 +101,16 @@ impl RealtimeIter {
 }
 
 impl Iterator for RealtimeIter {
-    type Item = ();
+    type Item = time::Duration;
 
-    fn next(&mut self) -> Option<()> {
+    fn next(&mut self) -> Option<time::Duration> {
         while self.acc >= self.step {
             self.acc -= self.step;
-            return Some(());
+            return Some(self.acc);
         }
-        // XXX
-        if self.update {
-            self.update = false;
-            return Some(());
-        } else {
-            thread::sleep(self.step - self.acc);
-            None
-        }
+
+        thread::sleep(self.step - self.acc);
+        None
     }
 }
 
@@ -122,24 +121,27 @@ impl Looper {
 
     pub fn run<R, U>(&self, mut render: R, mut update: U)
         where R: FnMut(i32) -> Action,
-              U: FnMut() -> Action
+              U: FnMut(i32) -> Action
     {
         let mut realtime = Realtime::new(self.fps);
-        let mut fps = PerSecond::new();
+        let mut rps = PerSecond::new();
+        let mut ups = PerSecond::new();
 
         loop {
-            fps.tick();
+            rps.tick();
 
-            match render(fps.get_fps()) {
+            match render(rps.get_fps()) {
                 Action::Stop => break,
                 Action::Continue => (),
             };
 
-            for _ in realtime.tick() {
-                match update() {
+            for acc in realtime.tick() {
+                ups.tick();
+                match update(ups.get_fps()) {
                     Action::Stop => break,
                     Action::Continue => (),
                 }
+                realtime.acc(acc);
             }
         }
     }
@@ -152,16 +154,134 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let mut state = 2;
-        let render = move |_fps| if state != 0 {
+        let mut state = 1;
+        let render = move |_| if state != 0 {
             state -= 1;
             Action::Continue
         } else {
             Action::Stop
         };
 
-        let update = || Action::Continue;
+        let update = |_| Action::Continue;
 
         Looper::new(60.0).run(render, update);
+    }
+
+    #[test]
+    fn it_renders() {
+        let mut state = 1;
+        let mut rendered = 0;
+
+        {
+            let render = |_| if state != 0 {
+                rendered += 1;
+                state -= 1;
+                Action::Continue
+            } else {
+                Action::Stop
+            };
+
+            let update = |_| Action::Continue;
+            Looper::new(60.0).run(render, update);
+        }
+
+        assert_eq!(rendered, 1);
+    }
+
+    #[test]
+    fn it_updates() {
+        let mut state = 2;
+        let mut updated = 0;
+
+        {
+            let render = |_fps| if state != 0 {
+                state -= 1;
+                Action::Continue
+            } else {
+                Action::Stop
+            };
+
+            let update = |_| {
+                updated += 1;
+                Action::Continue
+            };
+
+            Looper::new(60.0).run(render, update);
+        }
+
+        assert_eq!(updated, 1);
+    }
+
+    #[test]
+    fn it_renders_and_updates() {
+        let mut state = 60;
+        let mut rendered = 0;
+        let mut updated = 0;
+
+        {
+            let render = |_| if state != 0 {
+                rendered += 1;
+                state -= 1;
+                Action::Continue
+            } else {
+                Action::Stop
+            };
+
+            let update = |_| {
+                updated += 1;
+                Action::Continue
+            };
+
+            Looper::new(60.0).run(render, update);
+        }
+
+        assert_eq!(rendered, 60);
+        assert_eq!(updated, 59);
+    }
+
+    #[test]
+    fn it_rps() {
+        let mut state = 61;
+        let mut rps = 0;
+
+        {
+            let render = |fps| if state != 0 {
+                rps = fps;
+                state -= 1;
+                Action::Continue
+            } else {
+                Action::Stop
+            };
+
+            let update = |_| Action::Continue;
+
+            Looper::new(60.0).run(render, update);
+        }
+
+        assert_eq!(rps, 60);
+    }
+
+    #[test]
+    fn it_ups() {
+        let mut state = 61;
+        let mut ups = 0;
+
+        {
+            let render = |_fps| if state != 0 {
+                state -= 1;
+                Action::Continue
+            } else {
+                Action::Stop
+            };
+
+            let update = |fps| {
+                ups = fps;
+                Action::Continue
+            };
+
+            Looper::new(60.0).run(render, update);
+        }
+
+        assert_eq!(ups, 59);
     }
 }
