@@ -12,8 +12,9 @@ impl Looper {
     }
 
     pub fn run<R, U>(&self, mut render: R, mut update: U)
-        where R: FnMut(i32) -> action::Action,
-              U: FnMut(i32) -> action::Action
+    where
+        R: FnMut(i32) -> action::Action,
+        U: FnMut(i32) -> action::Action,
     {
         let mut realtime = realtime::Realtime::new(self.fps);
         let mut rps = per_second::PerSecond::new();

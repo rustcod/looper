@@ -1,3 +1,0 @@
-fn_args_layout = "Block"
-reorder_imported_names = true
-reorder_imports = true
