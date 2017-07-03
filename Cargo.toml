@@ -1,7 +1,13 @@
 [package]
 name = "looper"
 version = "0.0.1"
-authors = ["Dave O <davidobrite@gmail.com>"]
-license = "MIT OR Apache-2.0"
+authors = ["Rustcod Project Developers"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/looper"
+repository = "https://github.com/rustcod/looper"
+description = """
+A fixed step loop
+"""
 
 [dependencies]
