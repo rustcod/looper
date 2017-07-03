@@ -1,6 +1,3 @@
-use std::thread;
-use std::time;
-
 mod action;
 mod per_second;
 mod looper;
