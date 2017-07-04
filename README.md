@@ -1,4 +1,10 @@
+[![](https://travis-ci.org/rustcod/looper.svg?branch=master)](https://travis-ci.org/rustcod/looper)
+
 A fixed-step loop
+
+## [Documentation](https://docs.rs/looper)
+
+[![](https://docs.rs/looper/badge.svg)](https://docs.rs/looper)
 
 ## License
 
