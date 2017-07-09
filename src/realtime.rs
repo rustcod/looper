@@ -32,7 +32,7 @@ impl Realtime {
 }
 
 #[derive(Clone)] // TODO remove
-struct RealtimeIter {
+pub struct RealtimeIter {
     acc: time::Duration,
     step: time::Duration,
     update: bool,
